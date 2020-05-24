@@ -1,4 +1,4 @@
-# Margin GAN
+# MarginGAN
 
 The implementation of the NIPS 2019 paper "MarginGAN: Adversarial Training in Semi-Supervised Learning".
 
