@@ -116,7 +116,7 @@ class MarginGAN(object):
         self.C.train()
         self.D.train()
         self.G.train()
-
+        
         # Define real/fake labels
         self.real_img = 1
         self.fake_img = 0
@@ -294,6 +294,11 @@ class MarginGAN(object):
         
         gen_img = self.G(fixed_noise)
         save_image(gen_img,'imgs/'+str(job_id)+'/img_epoch_'+str(epoch+1)+'_label_'+str(self.label_size)+'.png',nrow=10)
+        
+    def print_model(self):
+        print(self.C)
+        print(self.D)
+        print(self.G)
         
     def imshow(self,fixed_noise):
         """ Code to visualize one batch of images with MarginGAN model.
