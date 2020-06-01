@@ -84,7 +84,7 @@ def inverted_cross_entropy_loss(pred,target,device):
     Returns:
         loss (float): Loss value calculated over one-hot predicted classes and target classes.
     """
-    dummy = torch.zeros(50,10)
+    dummy = torch.zeros(pred.shape[0],10)
     dummy = dummy.to(device)
     for i in range (pred.shape[0]):
         dummy[i,target[i]] = 1
