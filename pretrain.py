@@ -40,7 +40,9 @@ dataset = torchvision.datasets.MNIST("./data",train=True,transform=transforms.Co
 testset = torchvision.datasets.MNIST("./data",train=False,transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,), (0.5,))]),target_transform=None,download=True)
 
 # Divide the dataset into train and validation
-trainset, _ = torch.utils.data.random_split(dataset, [50000, 10000])
+val_size = 10000
+train_size = 60000-val_size
+trainset, _ = torch.utils.data.random_split(dataset, [train_size, val_size])
 
 # Load the test set
 testloader = torch.utils.data.DataLoader(
@@ -56,10 +58,11 @@ for label_size in [100,600,1000,3000]:
     C = C.to(device)
     optimizer = optim.SGD(C.parameters(),lr=lrC,momentum=momentum)
     criterion = nn.CrossEntropyLoss()
-    # Training loop
+    
     for epoch in range(num_epochs):
         running_loss = 0.0
         C.train()
+        # Training loop
         for i,(image,label) in enumerate(trainloader,0):
             image = image.to(device)
             label = label.to(device)

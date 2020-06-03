@@ -76,20 +76,20 @@ class Classifier(nn.Module):
         x_soft = F.softmax(x,dim=1)
         return x, x_soft
 
-def inverted_cross_entropy_loss(pred,target,device):
+def inverted_cross_entropy_loss(pred,target,device,eps=1e-6):
     """ Inverted cross-entropy loss defined in the paper.
     Args:
-        pred (torch.Tensor): Predicted classes.
+        pred (torch.Tensor): Predicted softmax probabilities for each class (batch_size, num_classes).
         target (torch.Tensor): Target classes.
     Returns:
         loss (float): Loss value calculated over one-hot predicted classes and target classes.
     """
-    dummy = torch.zeros(pred.shape[0],10)
-    dummy = dummy.to(device)
+    one_hot = torch.zeros(pred.shape)
+    one_hot = one_hot.to(device)
     for i in range (pred.shape[0]):
-        dummy[i,target[i]] = 1
+        one_hot[i,target[i]] = 1
         
-    loss = torch.mean(-torch.sum(torch.mul(dummy,(torch.log(1-pred+1e-6))),dim=1))
+    loss = torch.mean(-torch.sum(torch.mul(one_hot,(torch.log(1-pred+eps))),dim=1))
     return loss
 
 class MarginGAN(object):
@@ -156,8 +156,8 @@ class MarginGAN(object):
             gen_image = self.G(noise)
             
             # Create pseudolabels for the generated image
-            pseudo_gen_softmax, _ = self.C(gen_image)
-            pseudo_gen_label = torch.argmax(pseudo_gen_softmax.data, 1).to(self.device)
+            pseudo_gen_out, _ = self.C(gen_image)
+            pseudo_gen_label = torch.argmax(pseudo_gen_out.data, 1).to(self.device)
             
             # GPU support
             labeled_image = labeled_image.to(self.device)
@@ -165,18 +165,18 @@ class MarginGAN(object):
             real_label = real_label.to(self.device)
             
             # Create pseudolabels for the unlabeled image
-            pseudo_ul_softmax, _ = self.C(unlabeled_image)
-            pseudo_ul_label = torch.argmax(pseudo_ul_softmax.data, 1).to(self.device)
+            pseudo_ul_out, _ = self.C(unlabeled_image)
+            pseudo_ul_label = torch.argmax(pseudo_ul_out.data, 1).to(self.device)
             
             ##############
             # Classifier #
             ##############
             self.optimC.zero_grad()
             est_labeled, _ = self.C(labeled_image)
-            _ ,est_gen = self.C(gen_image)
-            est_gen_max = torch.max(est_gen,1)[1]
+            _ ,est_gen_softmax = self.C(gen_image)
+            est_gen_label = torch.max(est_gen_softmax,1)[1]
             est_unlabeled, _ = self.C(unlabeled_image)
-            lossC = self.ce(est_unlabeled,pseudo_ul_label) + self.ce(est_labeled,real_label) + self.ice(est_gen,est_gen_max,self.device)
+            lossC = self.ce(est_unlabeled,pseudo_ul_label) + self.ce(est_labeled,real_label) + self.ice(est_gen_softmax,est_gen_label,self.device)
             lossC.backward()
             self.optimC.step()
             
@@ -199,10 +199,10 @@ class MarginGAN(object):
             #############
             self.optimG.zero_grad()
             gen_image = self.G(noise)
-            gen_output2 = self.D(gen_image)
-            pseudo_gen_softmax, _ = self.C(gen_image)
-            pseudo_gen_label = torch.argmax(pseudo_gen_softmax.data, 1).to(self.device)
-            lossG = self.bce(gen_output2,r_label) + self.ce(pseudo_gen_softmax,pseudo_gen_label)
+            gen_output = self.D(gen_image)
+            pseudo_gen_out, _ = self.C(gen_image)
+            pseudo_gen_label = torch.argmax(pseudo_gen_out.data, 1).to(self.device)
+            lossG = self.bce(gen_output,r_label) + self.ce(pseudo_gen_out,pseudo_gen_label)
             lossG.backward()
             self.optimG.step()
 
