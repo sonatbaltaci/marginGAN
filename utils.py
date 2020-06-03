@@ -1,12 +1,16 @@
 import os
-from torchvision.utils import make_grid
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+from torchvision.utils import make_grid
 
 def visualize(image):
     image = make_grid(image,nrow=10)
-    npimg = image.detach().numpy()
+    npimg = image.detach().cpu().numpy()
     npimg = (np.transpose(npimg, (1,2,0)) + 1)/2
+    mpl.rcParams['savefig.pad_inches'] = 0
+    frame = plt.gca()
+    plt.axis('off')
     plt.imshow(npimg, interpolation='nearest')
 
 # Create necessary directories    
