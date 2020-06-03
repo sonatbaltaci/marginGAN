@@ -4,35 +4,59 @@ import argparse
 import time
 import datetime
 import os
-import tqdm
 import numpy as np
 from marginGAN import *
 from utils import *
 from dataset import *
 
-torch.manual_seed(0)
-batch_size = 50
-num_epochs = 10000
+# Create arguments to set hyperparameters
+parser = argparse.ArgumentParser()
+parser.add_argument("--batch_size","--bs","--batch",type=int,default=50)
+parser.add_argument("--seed",type=int,default=0)
+parser.add_argument("--num_epochs","--epoch",type=int,default=10000)
+parser.add_argument("--lrC",type=float,default=0.01)
+parser.add_argument("--momentum",type=float,default=0.8)
+parser.add_argument("--device",type=str,default="cuda:0")
+args = parser.parse_args()
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+batch_size = args.batch_size
+seed = args.seed
+num_epochs = args.num_epochs
+lrC = args.lrC
+momentum = args.momentum
+device = args.device
 
+# Select GPU/CPU
+if torch.cuda.is_available():
+    device = torch.device(device)
+else:
+    device = torch.device("cpu")
+
+# Provide manual seed for reproducibility
+torch.manual_seed(seed)
+
+# Call the datasets
 dataset = torchvision.datasets.MNIST("./data",train=True,transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,),(0.5,))]),target_transform=None,download=True)
-trainset, _ = torch.utils.data.random_split(dataset, [50000, 10000])
 testset = torchvision.datasets.MNIST("./data",train=False,transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,), (0.5,))]),target_transform=None,download=True)
 
+# Divide the dataset into train and validation
+trainset, _ = torch.utils.data.random_split(dataset, [50000, 10000])
 
+# Load the test set
 testloader = torch.utils.data.DataLoader(
 					dataset=testset,
 					batch_size=batch_size,
 					shuffle=False)
 
 for label_size in [100,600,1000,3000]:
+    # Divide and load the labeled dataset
     labeled_set, _ = divide_dataset(trainset, label_size)
     trainloader = torch.utils.data.DataLoader(dataset=labeled_set,batch_size=batch_size,shuffle=True)
     C = Classifier()
     C = C.to(device)
-    optimizer = optim.SGD(C.parameters(),lr=0.1,momentum=0.8)
+    optimizer = optim.SGD(C.parameters(),lr=lrC,momentum=momentum)
     criterion = nn.CrossEntropyLoss()
+    # Training loop
     for epoch in range(num_epochs):
         running_loss = 0.0
         C.train()
@@ -53,6 +77,7 @@ for label_size in [100,600,1000,3000]:
         correct = 0
         total = 0
         C.eval()
+        # Evaluation loop
         with torch.no_grad():
             for data in testloader:
                 images, labels = data
@@ -62,7 +87,7 @@ for label_size in [100,600,1000,3000]:
                 _, predicted = torch.max(outputs, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
-                
+            # Break when the required accuracy levels are reached    
             if label_size == 100 and correct/total > 0.80:
                 break
             elif label_size == 600 and correct/total > 0.93:
