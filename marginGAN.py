@@ -222,32 +222,6 @@ class MarginGAN(object):
                     (epoch + 1, i + 1, running_loss_C / log_every))
                 running_loss_C = 0.0
 
-    def test(self,fixed_noise,testloader):
-        """ Evaluation code of MarginGAN.
-        Args:
-           testloader (torch.utils.data.DataLoader): Test set.
-           load_model (list or tuple): Models to load for testing, discriminator, generator and classifier, respectively.
-        Returns:
-            correct (int): Number of correctly classified samples.
-        """
-        correct=0
-        total=0
-        self.C.eval()
-        self.G.eval()
-        with torch.no_grad():
-            for data in testloader:
-                images, labels = data
-                images = images.to(self.device)
-                labels = labels.to(self.device)
-                outputs, _ = self.C(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-        gen_img = self.G(fixed_noise)
-        
-        return correct
-
     def load(self,load_model):
         """ Load model.
         Args:
@@ -257,10 +231,10 @@ class MarginGAN(object):
         self.D = torch.load(load_model[1],map_location=self.device)
         self.G = torch.load(load_model[2],map_location=self.device)
 
-    def eval(self,valloader):
+    def eval(self,dataloader):
         """ Evaluation code of MarginGAN.
         Args:
-           valloader (torch.utils.data.DataLoader): Validation set.
+           dataloader (torch.utils.data.DataLoader): Test dataset.
         Returns:
             correct (int): Number of correctly classified samples.
         """
@@ -268,7 +242,7 @@ class MarginGAN(object):
         total=0
         self.C.eval()
         with torch.no_grad():
-            for data in valloader:
+            for data in dataloader:
                 images, labels = data
                 images = images.to(self.device)
                 labels = labels.to(self.device)
